@@ -26,15 +26,42 @@ stecken vollständig in `index.html`.
 - ATR (14), absolut und in Prozent des Kurses
 - Kurzauswertung in Worten: Trendlage, RSI-Zustand, MACD-Stellung, Position im Bollinger-Band
 
+**Eigene Tabelle**
+- Reiter **Tabelle**: Datum, Eröffnung und Schluss von Hand eintragen — ganz ohne API
+- Mehrere Zeilen auf einmal einfügen: Spalten aus einer beliebigen Tabelle kopieren und in ein Feld einfügen
+- Mitgerechnet werden Tagesergebnis (Schluss gegen Eröffnung), Veränderung zum Vortag und Entwicklung seit der ersten Zeile
+- Zusammenfassung darunter: Zeitraum, Gesamtperformance, bester und schwächster Tag, Anteil der Tage im Plus, durchschnittliche Tagesbewegung
+- Beliebig viele Reihen nebeneinander, jede unter eigenem Namen; Wechsel über die Seitenleiste
+- Chart und Indikatoren rechnen live mit, während getippt wird
+- Export der Reihe als CSV
+
 **Bedienung**
-- Watchlist, Indikator-Auswahl und Darstellung bleiben lokal im Browser gespeichert
+- Watchlist, eigene Reihen, Indikator-Auswahl und Darstellung bleiben lokal im Browser gespeichert
 - Symbolsuche mit Vorschlägen
 - CSV-Import als Alternative zur API
 
 ## Einrichten
 
 Die Datei kann direkt geöffnet werden (Doppelklick) oder über GitHub Pages laufen.
-Für Kursdaten wird ein kostenloser Schlüssel von [Twelve Data](https://twelvedata.com/pricing) gebraucht:
+
+Kursdaten kommen auf drei Wegen ins Tool — **eigene Tabelle**, **CSV-Datei** oder **API**.
+Für die ersten beiden ist keinerlei Einrichtung nötig.
+
+### Weg 1: Tabelle (ohne Anmeldung)
+
+Oben auf **Tabelle** wechseln, der Reihe einen Namen geben und Datum, Eröffnung und Schluss
+eintragen. Datums- und Zahlenformat dürfen deutsch sein (`31.08.2026`, `231,02`).
+Wer die Kurse schon irgendwo stehen hat, markiert dort die drei Spalten, kopiert sie und
+fügt sie in das erste Feld einer Zeile ein — die Zeilen entstehen automatisch.
+Mit **Chart ansehen** landen die Daten im Chart.
+
+Ohne Hoch und Tief zeichnet der Chart den Kerzenkörper von Eröffnung bis Schluss, ohne Dochte.
+Volumen und ATR fehlen dann folgerichtig; alles andere — SMA, EMA, Bollinger, RSI, MACD,
+Volatilität, Jahresspanne — rechnet aus den Schlusskursen und stimmt.
+
+### Weg 2: API-Key
+
+Für automatisch geladene Kurse wird ein kostenloser Schlüssel von [Twelve Data](https://twelvedata.com/pricing) gebraucht:
 
 1. Auf twelvedata.com den Basic-Plan wählen und registrieren — 800 Abrufe pro Tag, 8 pro Minute
 2. Im Dashboard den API-Key kopieren
@@ -46,9 +73,9 @@ nur an Twelve Data geschickt. Er landet nie im Repository — im Code steht kein
 Abgedeckt sind im kostenlosen Plan US-Aktien und ETFs. Deutsche Börsenplätze gehören
 dort zum Bezahlplan; dafür ist der CSV-Weg gedacht.
 
-## Ohne API-Key: CSV
+### Weg 3: CSV
 
-Über den Knopf **CSV** lässt sich ein Kursexport laden, etwa aus dem Broker-Depot oder
+Über den Knopf **CSV** lässt sich ein fertiger Kursexport laden, etwa aus dem Broker-Depot oder
 von Yahoo Finance. Erwartet werden Spalten mit Datum und Schlusskurs, Open/High/Low/Volume
 werden mitgenommen, wenn vorhanden:
 

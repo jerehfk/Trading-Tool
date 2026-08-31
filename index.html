@@ -106,6 +106,32 @@
   .status{font-size:12px; color:var(--muted); margin-left:2px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .status.err{color:var(--down)}
 
+  /* Tabellenansicht */
+  .tblbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px}
+  .tblbar input.name{
+    background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:7px 10px; width:220px; outline:none;
+  }
+  .tblwrap{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:62vh}
+  table.grid{border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums}
+  table.grid th{
+    position:sticky; top:0; background:var(--panel2); z-index:2; text-align:left;
+    font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted);
+    padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap;
+  }
+  table.grid td{border-bottom:1px solid var(--line); padding:0}
+  table.grid tr:hover td{background:#1a212c}
+  table.grid input{
+    width:100%; background:transparent; border:0; padding:8px 10px; outline:none; font-variant-numeric:tabular-nums;
+  }
+  table.grid input:focus{background:#233047; box-shadow:inset 0 0 0 1px var(--accent)}
+  table.grid td.calc{padding:8px 10px; color:var(--muted); white-space:nowrap}
+  table.grid td.del{width:34px; text-align:center}
+  table.grid td.del button{background:none; border:0; color:var(--muted); cursor:pointer; font-size:15px; padding:4px 8px}
+  table.grid td.del button:hover{color:var(--down)}
+  .serlist{display:flex; flex-direction:column; gap:4px}
+  .hint{color:var(--muted); font-size:12px; margin-top:10px; line-height:1.6; max-width:760px}
+  .sum{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+
   dialog{
     border:1px solid var(--line); background:var(--panel); color:var(--text);
     border-radius:14px; padding:0; width:min(520px,92vw); box-shadow:0 24px 60px #000a;
@@ -131,6 +157,10 @@
 
 <header>
   <div class="brand">Aktien-Analyse<span>technische Kursanalyse</span></div>
+  <div class="seg" id="viewSeg">
+    <button data-v="chart" class="on">Chart</button>
+    <button data-v="tabelle">Tabelle</button>
+  </div>
   <div class="search">
     <input id="sym" type="text" placeholder="Symbol, z. B. AAPL oder SAP" autocomplete="off" spellcheck="false">
     <button class="btn primary" id="load">Laden</button>
@@ -152,6 +182,11 @@
       <button class="btn" id="addWl" style="width:100%;margin-top:8px">+ aktuelles Symbol</button>
     </div>
     <div class="grp">
+      <h3>Eigene Reihen</h3>
+      <div class="serlist" id="serList"></div>
+      <button class="btn" id="serNew" style="width:100%;margin-top:8px">+ neue Reihe</button>
+    </div>
+    <div class="grp">
       <h3>Im Kurschart</h3>
       <div id="overlays"></div>
     </div>
@@ -166,6 +201,7 @@
   </aside>
 
   <main>
+   <section id="chartView">
     <div class="title">
       <h1 id="tSym">—</h1>
       <span class="name" id="tName"></span>
@@ -185,8 +221,43 @@
     <p class="note">
       Mausrad zoomt, Ziehen verschiebt den Ausschnitt, Doppelklick setzt zurück.
       Die Auswertung beschreibt nur, was die Indikatoren gerade anzeigen — sie ist keine Anlageberatung
-      und keine Prognose. Kursdaten kommen von Twelve Data (kostenloser Zugang: 800 Abrufe pro Tag) oder aus einer eigenen CSV-Datei.
+      und keine Prognose. Kursdaten kommen von Twelve Data (800 Abrufe pro Tag), aus einer CSV-Datei oder aus deiner eigenen Tabelle.
     </p>
+   </section>
+
+   <section id="tableView" style="display:none">
+    <div class="title"><h1>Kurse eintragen</h1><span class="name" id="tblMeta"></span></div>
+    <div class="tblbar">
+      <input class="name" id="serName" type="text" placeholder="Name der Reihe, z. B. SAP" spellcheck="false">
+      <button class="btn" id="rowAdd">+ Zeile</button>
+      <button class="btn" id="rows10">+ 10 Zeilen</button>
+      <button class="btn" id="serSort">nach Datum sortieren</button>
+      <button class="btn" id="serCsv">als CSV sichern</button>
+      <button class="btn" id="serDel">Reihe löschen</button>
+      <button class="btn primary" id="serShow">Chart ansehen</button>
+    </div>
+    <div class="tblwrap">
+      <table class="grid">
+        <thead><tr>
+          <th style="width:150px">Datum</th>
+          <th style="width:130px">Eröffnung</th>
+          <th style="width:130px">Schluss</th>
+          <th style="width:110px">Tag</th>
+          <th style="width:130px">ggü. Vortag</th>
+          <th style="width:130px">seit Beginn</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="grid"></tbody>
+      </table>
+    </div>
+    <div class="sum" id="tblSum"></div>
+    <p class="hint">
+      Eintippen oder einfügen: markiere in einer Tabelle die Spalten Datum, Eröffnung und Schluss,
+      kopiere sie und füge sie in das erste Feld einer Zeile ein — die Zeilen werden automatisch angelegt.
+      Alles wird laufend in diesem Browser gespeichert. Für Kerzen mit Dochten und für Volumen
+      bräuchte es Hoch, Tief und Stückzahl; ohne die zeigt der Chart den Kerzenkörper von Eröffnung bis Schluss.
+    </p>
+   </section>
   </main>
 </div>
 
@@ -229,7 +300,9 @@ const LS = {
   key:  "aktien.apikey",
   wl:   "aktien.watchlist",
   opt:  "aktien.options",
-  last: "aktien.lastSymbol"
+  last: "aktien.lastSymbol",
+  ser:  "aktien.series",
+  cur:  "aktien.currentSeries"
 };
 const store = {
   get(k, fb){ try{ const v = localStorage.getItem(k); return v === null ? fb : JSON.parse(v);}catch(e){ return fb; } },
@@ -457,6 +530,8 @@ function applyData(symbol, bars, meta){
   state.name     = meta.instrument_name || meta.name || "";
   state.currency = meta.currency || "";
   state.exchange = meta.exchange || "";
+  state.hasVolume = bars.some(b => b.v > 0);
+  state.hasWicks  = bars.some(b => b.h > Math.max(b.o,b.c) + 1e-9 || b.l < Math.min(b.o,b.c) - 1e-9);
   computeIndicators();
   setRange(state.range);
   renderAll();
@@ -780,7 +855,8 @@ function drawAll(){
   if (!state.bars.length) return;
   panels.forEach(p => {
     const wrap = p.wrap ? $(p.wrap) : null;
-    const on = !p.opt || state.opt[p.opt];
+    let on = !p.opt || state.opt[p.opt];
+    if (p.opt === "vol" && !state.hasVolume) on = false;
     if (wrap) wrap.style.display = on ? "" : "none";
     if (on) p.draw($(p.id), p.h());
   });
@@ -818,8 +894,8 @@ function renderStats(){
     card("52-Wochen-Tief", nf(lo52), "sm") +
     card("Abstand zum Hoch", pct((last.c/hi52 - 1)*100), "sm " + cls(last.c-hi52)) +
     card("Volatilität p. a.", nf(vol,1) + " %", "sm") +
-    card("ATR (14)", nf(a) + (a ? ` · ${nf(a/last.c*100,1)} %` : ""), "sm") +
-    card("Ø Volumen (20)", fmtVol(b.slice(-20).reduce((s,x)=>s+x.v,0)/Math.min(20,n)), "sm");
+    (state.hasWicks ? card("ATR (14)", nf(a) + (a ? ` · ${nf(a/last.c*100,1)} %` : ""), "sm") : "") +
+    (state.hasVolume ? card("Ø Volumen (20)", fmtVol(b.slice(-20).reduce((s,x)=>s+x.v,0)/Math.min(20,n)), "sm") : "");
 }
 
 /* ============================ Auswertung ============================ */
@@ -883,6 +959,13 @@ function renderSignals(){
 function renderAll(){
   $("tSym").textContent = state.symbol || "—";
   $("tName").textContent = [state.name, state.exchange].filter(Boolean).join(" · ");
+  const volLabel = document.querySelector('[data-opt="vol"]');
+  if (volLabel){
+    const missing = state.bars.length && !state.hasVolume;
+    volLabel.style.opacity = missing ? .45 : 1;
+    volLabel.title = missing ? "Für diese Reihe sind keine Stückzahlen erfasst" : "";
+    volLabel.querySelector("span:last-child").textContent = missing ? "Volumen (keine Daten)" : "Volumen";
+  }
   renderStats(); renderSignals(); drawAll(); renderWatchlist();
 }
 
@@ -936,6 +1019,7 @@ function buildControls(){
     l.className = "chk";
     l.innerHTML = `<input type="checkbox" ${state.opt[key] ? "checked" : ""}>` +
       (color ? `<span class="swatch" style="background:${color}"></span>` : "") + `<span>${label}</span>`;
+    l.dataset.opt = key;
     l.querySelector("input").onchange = e => {
       state.opt[key] = e.target.checked;
       store.set(LS.opt, state.opt);
@@ -1102,12 +1186,283 @@ function bindDialogs(){
   });
 }
 
+/* ============================ Eigene Kursreihen ============================ */
+const series = {
+  all(){ return store.get(LS.ser, {}); },
+  save(o){ store.set(LS.ser, o); },
+  current(){ return store.get(LS.cur, ""); },
+  rows(name){ return (this.all()[name] || []); },
+  put(name, rows){ const a = this.all(); a[name] = rows; this.save(a); },
+  rename(from, to){
+    const a = this.all();
+    if (from === to || !a[from]) return;
+    a[to] = a[from]; delete a[from]; this.save(a); store.set(LS.cur, to);
+  },
+  remove(name){ const a = this.all(); delete a[name]; this.save(a); }
+};
+
+let curRows = [];      // Arbeitskopie der gerade bearbeiteten Reihe
+
+function parseNum(v){
+  if (v == null) return null;
+  let t = String(v).trim().replace(/\s|€|\$/g, "");
+  if (!t) return null;
+  if (/,\d{1,4}$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
+  else t = t.replace(/,/g, "");
+  const n = parseFloat(t);
+  return isFinite(n) ? n : null;
+}
+function parseDate(v){
+  const t = String(v || "").trim();
+  if (!t) return null;
+  let m = t.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);   // 31.08.2026
+  if (m){
+    let [,d,mo,y] = m; if (y.length === 2) y = "20" + y;
+    return `${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  }
+  m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);                     // 2026-08-31
+  if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? null : d.toISOString().slice(0,10);
+}
+const showDate = iso => {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : (iso || "");
+};
+
+function validRows(){
+  return curRows
+    .map(r => ({d: parseDate(r.d), o: parseNum(r.o), c: parseNum(r.c)}))
+    .filter(r => r.d && r.c != null)
+    .sort((a,b) => a.d < b.d ? -1 : 1);
+}
+
+function renderGrid(){
+  const tb = $("grid");
+  tb.innerHTML = "";
+  if (!curRows.length) curRows = Array.from({length:8}, () => ({d:"", o:"", c:""}));
+  curRows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td><input data-i="${i}" data-f="d" value="${r.d ?? ""}" placeholder="TT.MM.JJJJ" spellcheck="false"></td>` +
+      `<td><input data-i="${i}" data-f="o" value="${r.o ?? ""}" placeholder="—" inputmode="decimal"></td>` +
+      `<td><input data-i="${i}" data-f="c" value="${r.c ?? ""}" placeholder="—" inputmode="decimal"></td>` +
+      `<td class="calc" data-c="tag"></td><td class="calc" data-c="vt"></td><td class="calc" data-c="ges"></td>` +
+      `<td class="del"><button title="Zeile löschen" data-del="${i}">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  updateCalc();
+}
+
+function updateCalc(){
+  const tb = $("grid");
+  const parsed = curRows.map(r => ({d: parseDate(r.d), o: parseNum(r.o), c: parseNum(r.c)}));
+  const firstC = (parsed.find(r => r.d && r.c != null) || {}).c;
+  let prevC = null;
+  [...tb.children].forEach((tr, i) => {
+    const r = parsed[i];
+    const set = (key, val, color) => {
+      const td = tr.querySelector(`[data-c="${key}"]`);
+      td.textContent = val;
+      td.className = "calc " + (color || "");
+    };
+    if (!r || r.c == null){ set("tag","–"); set("vt","–"); set("ges","–"); return; }
+    const tag = r.o != null && r.o !== 0 ? (r.c/r.o - 1)*100 : null;
+    const vt  = prevC ? (r.c/prevC - 1)*100 : null;
+    const ges = firstC ? (r.c/firstC - 1)*100 : null;
+    set("tag", tag == null ? "–" : pct(tag), cls(tag));
+    set("vt",  vt  == null ? "–" : pct(vt),  cls(vt));
+    set("ges", ges == null ? "–" : pct(ges), cls(ges));
+    prevC = r.c;
+  });
+  renderTblSummary(parsed.filter(r => r.d && r.c != null));
+}
+
+function renderTblSummary(rows){
+  const box = $("tblSum");
+  if (rows.length < 2){ box.innerHTML = ""; return; }
+  rows = rows.slice().sort((a,b) => a.d < b.d ? -1 : 1);
+  const chg = [];
+  for (let i = 1; i < rows.length; i++) chg.push((rows[i].c/rows[i-1].c - 1)*100);
+  const ges = (rows[rows.length-1].c/rows[0].c - 1)*100;
+  const best = Math.max(...chg), worst = Math.min(...chg);
+  const gruen = chg.filter(v => v > 0).length / chg.length * 100;
+  const avg = chg.reduce((a,b) => a + Math.abs(b), 0) / chg.length;
+  const card = (k,v,c) => `<div class="card"><div class="k">${k}</div><div class="v sm ${c||""}">${v}</div></div>`;
+  box.innerHTML =
+    card("Zeilen", rows.length) +
+    card("Zeitraum", `${showDate(rows[0].d)} – ${showDate(rows[rows.length-1].d)}`) +
+    card("Gesamt", pct(ges), cls(ges)) +
+    card("Bester Tag", pct(best), "up") +
+    card("Schwächster Tag", pct(worst), "down") +
+    card("Tage im Plus", nf(gruen,0) + " %") +
+    card("Ø Tagesbewegung", nf(avg,2) + " %");
+}
+
+function persistRows(){
+  const name = ($("serName").value || "").trim() || "Meine Reihe";
+  series.put(name, curRows.filter(r => (r.d||"") !== "" || (r.o||"") !== "" || (r.c||"") !== ""));
+  store.set(LS.cur, name);
+  renderSeriesList();
+}
+
+function seriesToChart(quiet){
+  const rows = validRows();
+  if (rows.length < 2){ if (!quiet) setStatus("Mindestens zwei Zeilen mit Datum und Schlusskurs eintragen", true); return false; }
+  const bars = rows.map(r => {
+    const o = r.o == null ? r.c : r.o;
+    return {t: new Date(r.d + "T00:00:00"), o, h: Math.max(o, r.c), l: Math.min(o, r.c), c: r.c, v: 0};
+  });
+  const name = ($("serName").value || "").trim() || "Meine Reihe";
+  applyData(name, bars, {instrument_name: "selbst eingetragen", exchange: "Tabelle"});
+  return true;
+}
+
+function renderSeriesList(){
+  const all = series.all(), cur = series.current(), box = $("serList");
+  box.innerHTML = "";
+  Object.keys(all).sort().forEach(name => {
+    const b = document.createElement("button");
+    b.className = "wl-item" + (name === cur ? " on" : "");
+    b.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:6px;background:transparent;border:1px solid " +
+      (name === cur ? "var(--line)" : "transparent") + ";border-radius:7px;padding:6px 8px;cursor:pointer;text-align:left;width:100%;" +
+      (name === cur ? "background:#232c39;" : "");
+    b.innerHTML = `<span>${name}</span><span class="x" style="color:var(--muted)">×</span>`;
+    b.onclick = e => {
+      if (e.target.classList.contains("x")){
+        if (!confirm(`Reihe „${name}" löschen?`)) return;
+        series.remove(name);
+        if (cur === name){ store.set(LS.cur, ""); curRows = []; $("serName").value = ""; renderGrid(); }
+        renderSeriesList();
+      } else openSeries(name);
+    };
+    box.appendChild(b);
+  });
+  if (!Object.keys(all).length) box.innerHTML = '<div style="color:var(--muted);font-size:12px">noch keine — Tabelle öffnen und eintragen</div>';
+}
+
+function openSeries(name){
+  $("serName").value = name;
+  curRows = series.rows(name).map(r => ({...r}));
+  store.set(LS.cur, name);
+  renderGrid(); renderSeriesList();
+  seriesToChart(true);
+  setView("tabelle");
+}
+
+function setView(v){
+  const chart = v === "chart";
+  $("chartView").style.display = chart ? "" : "none";
+  $("tableView").style.display = chart ? "none" : "";
+  [...$("viewSeg").children].forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  if (chart) requestAnimationFrame(drawAll);
+}
+
+function bindTable(){
+  [...$("viewSeg").children].forEach(b => b.onclick = () => setView(b.dataset.v));
+
+  const tb = $("grid");
+  let saveT = null;
+  const touched = () => {
+    updateCalc();
+    clearTimeout(saveT);
+    saveT = setTimeout(() => { persistRows(); seriesToChart(true); }, 500);
+  };
+
+  tb.addEventListener("input", e => {
+    const inp = e.target;
+    if (!inp.dataset.f) return;
+    curRows[+inp.dataset.i][inp.dataset.f] = inp.value;
+    touched();
+  });
+  tb.addEventListener("click", e => {
+    const d = e.target.dataset.del;
+    if (d == null) return;
+    curRows.splice(+d, 1);
+    renderGrid(); persistRows(); seriesToChart(true);
+  });
+  tb.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const inp = e.target;
+    if (!inp.dataset.f) return;
+    const i = +inp.dataset.i;
+    if (i === curRows.length - 1){ curRows.push({d:"",o:"",c:""}); renderGrid(); }
+    const next = tb.querySelector(`[data-i="${i+1}"][data-f="${inp.dataset.f}"]`);
+    next && next.focus();
+  });
+  // Mehrere Zeilen auf einmal einfügen
+  tb.addEventListener("paste", e => {
+    const inp = e.target;
+    if (!inp.dataset.f) return;
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    if (!/[\t\n;]/.test(text)) return;              // einzelner Wert: normal einfügen
+    e.preventDefault();
+    const start = +inp.dataset.i;
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    lines.forEach((ln, k) => {
+      const parts = ln.split(/\t|;|,(?=\s*\d{4}-)|(?<=\d)\s{2,}(?=\d)/).map(x => x.trim());
+      const cells = parts.length >= 2 ? parts : ln.split(/\s+/);
+      const row = curRows[start + k] || (curRows[start + k] = {d:"",o:"",c:""});
+      if (cells.length >= 3){ row.d = cells[0]; row.o = cells[1]; row.c = cells[2]; }
+      else if (cells.length === 2){ row.d = cells[0]; row.c = cells[1]; }
+    });
+    renderGrid(); persistRows(); seriesToChart(true);
+    setStatus(`${lines.length} Zeilen eingefügt`);
+  });
+
+  $("rowAdd").onclick  = () => { curRows.push({d:"",o:"",c:""}); renderGrid(); };
+  $("rows10").onclick  = () => { for (let i=0;i<10;i++) curRows.push({d:"",o:"",c:""}); renderGrid(); };
+  $("serSort").onclick = () => {
+    curRows = curRows.filter(r => parseDate(r.d)).sort((a,b) => parseDate(a.d) < parseDate(b.d) ? -1 : 1);
+    renderGrid(); persistRows();
+  };
+  $("serShow").onclick = () => { if (seriesToChart()) setView("chart"); };
+  $("serName").onchange = () => {
+    const to = $("serName").value.trim();
+    const from = series.current();
+    if (to && from && to !== from) series.rename(from, to);
+    persistRows();
+  };
+  $("serNew").onclick = () => {
+    const name = prompt("Name der neuen Reihe (z. B. SAP)", "");
+    if (name == null) return;
+    const n = name.trim() || "Meine Reihe";
+    curRows = Array.from({length:8}, () => ({d:"",o:"",c:""}));
+    $("serName").value = n;
+    series.put(n, []); store.set(LS.cur, n);
+    renderGrid(); renderSeriesList(); setView("tabelle");
+  };
+  $("serDel").onclick = () => {
+    const n = series.current();
+    if (!n || !confirm(`Reihe „${n}" löschen?`)) return;
+    series.remove(n); store.set(LS.cur, "");
+    curRows = []; $("serName").value = "";
+    renderGrid(); renderSeriesList();
+  };
+  $("serCsv").onclick = () => {
+    const rows = validRows();
+    if (!rows.length) return setStatus("Nichts zu sichern", true);
+    const csv = "Date,Open,Close\n" + rows.map(r => `${r.d},${r.o ?? r.c},${r.c}`).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+    a.download = (($("serName").value || "kurse").trim()) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+}
+
 /* ============================ Start ============================ */
 buildControls();
 bindInteraction();
 bindSearch();
 bindDialogs();
+bindTable();
 renderWatchlist();
+renderSeriesList();
+
+const curSer = series.current();
+if (curSer){ $("serName").value = curSer; curRows = series.rows(curSer).map(r => ({...r})); }
+renderGrid();
 
 let rTimer = null;
 window.addEventListener("resize", () => { clearTimeout(rTimer); rTimer = setTimeout(drawAll, 120); });
@@ -1115,7 +1470,8 @@ window.addEventListener("resize", () => { clearTimeout(rTimer); rTimer = setTime
 const startSym = store.get(LS.last, "");
 if (apiKey() && startSym){ $("sym").value = startSym; load(startSym); }
 else if (apiKey()){ $("sym").value = "AAPL"; load("AAPL"); }
-else setStatus("Zum Start: API-Key hinterlegen oder eine CSV laden");
+else if (curSer && series.rows(curSer).length){ seriesToChart(true); setStatus(`Reihe „${curSer}" geladen`); }
+else { setView("tabelle"); setStatus("Kurse in die Tabelle eintragen — oder API-Key hinterlegen"); }
 </script>
 </body>
 </html>
