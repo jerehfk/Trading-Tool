@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Prueft die Einstiegsregeln der 4h-Bitcoin-Trendfolge und rechnet Stop und Positionsgroesse.">
+<title>Bitcoin Trade-Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+html{color-scheme:light dark}
+[hidden]{display:none!important}
+img{max-width:100%}
+
+:root{
+  color-scheme:light;
+  --paper:#F2F4F7;--surface:#FFFFFF;--surface-2:#F8FAFC;
+  --ink:#151C25;--ink-2:#4C5866;--ink-3:#7C8794;
+  --rule:#DCE2E9;--rule-strong:#C3CCD6;
+  --accent:#1F5FAE;--accent-soft:#E7EFF9;
+  --go-bg:#EAF6EE;--go-rule:#9FCFB2;--go-ink:#14663A;
+  --stop-bg:#FBECEA;--stop-rule:#E3B4AD;--stop-ink:#8C2F22;
+  --flag-bg:#FBF1E2;--flag-ink:#7C5410;--flag-rule:#E6D2AE;
+  --shadow:0 1px 2px rgba(21,28,37,.05),0 8px 24px -16px rgba(21,28,37,.25);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --paper:#0F1319;--surface:#171D25;--surface-2:#1C232C;
+  --ink:#E9EDF2;--ink-2:#A6B1BD;--ink-3:#76818D;
+  --rule:#2A323C;--rule-strong:#3A444F;
+  --accent:#79AFEC;--accent-soft:#1B2836;
+  --go-bg:#12261B;--go-rule:#2C5B3D;--go-ink:#7FD3A0;
+  --stop-bg:#2A1714;--stop-rule:#5C2E26;--stop-ink:#E89A8C;
+  --flag-bg:#241D12;--flag-ink:#DCB673;--flag-rule:#4A3A20;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0F1319;--surface:#171D25;--surface-2:#1C232C;
+  --ink:#E9EDF2;--ink-2:#A6B1BD;--ink-3:#76818D;
+  --rule:#2A323C;--rule-strong:#3A444F;
+  --accent:#79AFEC;--accent-soft:#1B2836;
+  --go-bg:#12261B;--go-rule:#2C5B3D;--go-ink:#7FD3A0;
+  --stop-bg:#2A1714;--stop-rule:#5C2E26;--stop-ink:#E89A8C;
+  --flag-bg:#241D12;--flag-ink:#DCB673;--flag-rule:#4A3A20;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:760px;margin:0 auto;padding:30px 18px 72px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:20px}
+.kicker{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;font-size:11.5px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin:0 0 7px}
+h1{font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:700;font-size:clamp(28px,7vw,40px);
+  line-height:1.03;letter-spacing:-.015em;margin:0 0 9px}
+.dek{color:var(--ink-2);font-size:15.5px;max-width:60ch;margin:0}
+
+.tabs{display:flex;gap:0;border:1px solid var(--rule-strong);border-radius:4px;overflow:hidden;margin-bottom:22px}
+.tabs button{flex:1;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:14px;font-weight:600;
+  padding:12px 10px;background:var(--surface);border:0;border-right:1px solid var(--rule-strong);
+  color:var(--ink-3);cursor:pointer;line-height:1.25}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--accent);color:#fff}
+.tabs button:not([aria-selected="true"]):hover{color:var(--ink);background:var(--surface-2)}
+
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:20px;
+  box-shadow:var(--shadow);margin-bottom:18px}
+h2{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-3);margin:0 0 14px}
+h2.mt{margin-top:26px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:13px}
+.f label{display:block;font-family:"IBM Plex Sans Condensed",sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+.f label .hint{display:block;text-transform:none;letter-spacing:0;font-weight:400;font-size:11.5px;
+  color:var(--ink-3);opacity:.85;margin-top:2px}
+input{width:100%;background:var(--surface-2);border:1px solid var(--rule-strong);border-radius:3px;
+  padding:11px 12px;font-family:"IBM Plex Mono",monospace;font-size:16px;color:var(--ink);
+  font-variant-numeric:tabular-nums}
+input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+input.bad{border-color:var(--stop-rule);background:var(--stop-bg)}
+
+.verdict{border-radius:4px;padding:18px 20px;border:1px solid;margin-bottom:18px}
+.verdict .head{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:19px;font-weight:700;
+  letter-spacing:-.005em;display:flex;align-items:center;gap:10px}
+.verdict .head .badge{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;border-radius:3px;
+  padding:2px 7px;flex:0 0 auto;opacity:.85}
+.verdict p{margin:9px 0 0;font-size:15px;max-width:58ch}
+.verdict.go{background:var(--go-bg);border-color:var(--go-rule);color:var(--go-ink)}
+.verdict.wait{background:var(--surface-2);border-color:var(--rule-strong);color:var(--ink-2)}
+.verdict.out{background:var(--stop-bg);border-color:var(--stop-rule);color:var(--stop-ink)}
+.verdict.idle{background:var(--surface-2);border-color:var(--rule);color:var(--ink-3)}
+
+.conds{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.conds li{display:flex;gap:11px;align-items:baseline;flex-wrap:wrap;
+  padding:11px 2px;border-bottom:1px solid var(--rule);font-size:15px}
+.mark{flex:0 0 auto;font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;
+  letter-spacing:.05em;text-transform:uppercase;width:66px;text-align:center;border-radius:3px;padding:3px 0}
+.mark.y{background:var(--go-bg);color:var(--go-ink);border:1px solid var(--go-rule)}
+.mark.n{background:var(--surface-2);color:var(--ink-3);border:1px solid var(--rule-strong)}
+.conds .val{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:14px;
+  font-variant-numeric:tabular-nums;color:var(--ink-2);white-space:nowrap}
+
+.plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+.plan div{background:var(--surface);padding:13px 15px}
+.plan .k{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:10.5px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.plan .v{font-family:"IBM Plex Mono",monospace;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.2}
+.plan .c{font-size:12px;color:var(--ink-3);font-family:"IBM Plex Sans Condensed",sans-serif;margin-top:3px}
+
+.flag{background:var(--flag-bg);border:1px solid var(--flag-rule);border-radius:3px;padding:13px 16px;
+  color:var(--flag-ink);font-size:14.5px;margin-top:16px}
+.flag p{margin:0;max-width:64ch}
+.flag[hidden]{display:none!important}
+.note{font-size:13.5px;color:var(--ink-3);max-width:64ch;margin:12px 0 0}
+
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;border-top:1px solid var(--rule);padding-top:16px}
+button.ghost{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:12.5px;font-weight:600;
+  letter-spacing:.05em;text-transform:uppercase;background:none;border:1px solid var(--rule-strong);
+  color:var(--ink-2);border-radius:3px;padding:8px 14px;cursor:pointer}
+button.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+details{background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:0 18px;margin-top:22px}
+summary{font-family:"IBM Plex Sans Condensed",sans-serif;font-size:13px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3);padding:15px 0;cursor:pointer}
+summary::marker{color:var(--ink-3)}
+details[open] summary{border-bottom:1px solid var(--rule)}
+.rules{list-style:none;margin:0;padding:6px 0 18px}
+.rules li{display:grid;grid-template-columns:34px 1fr;gap:10px;padding:9px 0;font-size:14.5px;align-items:baseline}
+.rules .id{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--accent);font-weight:500}
+footer{border-top:1px solid var(--rule);margin-top:30px;padding-top:16px;font-size:13px;color:var(--ink-3);max-width:64ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="kicker">4-Stunden-Kerzen · nur Long · Regelwerk v2.0</p>
+  <h1>Bitcoin Trade-Check</h1>
+  <p class="dek">Werte aus dem Chart eintragen, Antwort ablesen. Prüft immer die zuletzt <em>geschlossene</em> Kerze — nie die laufende.</p>
+</header>
+
+<div class="tabs" role="tablist">
+  <button role="tab" id="tab-in" aria-selected="true" aria-controls="panel-in">Kein Trade offen<br><span style="font-weight:400;font-size:12px">Einstieg prüfen</span></button>
+  <button role="tab" id="tab-mg" aria-selected="false" aria-controls="panel-mg">Trade läuft<br><span style="font-weight:400;font-size:12px">Nachziehen &amp; Ausstieg</span></button>
+</div>
+
+<!-- ============ EINSTIEG ============ -->
+<section id="panel-in" role="tabpanel" aria-labelledby="tab-in">
+  <div class="card">
+    <h2>Aus dem Chart ablesen</h2>
+    <div class="grid">
+      <div class="f"><label for="i-close">Schlusskurs<span class="hint">das C der Kerze</span></label>
+        <input id="i-close" type="number" inputmode="decimal" step="any" placeholder="78616,4"></div>
+      <div class="f"><label for="i-e50">EMA 50</label>
+        <input id="i-e50" type="number" inputmode="decimal" step="any" placeholder="77606,2"></div>
+      <div class="f"><label for="i-e200">EMA 200</label>
+        <input id="i-e200" type="number" inputmode="decimal" step="any" placeholder="71332,4"></div>
+      <div class="f"><label for="i-atr">ATR (14)</label>
+        <input id="i-atr" type="number" inputmode="decimal" step="any" placeholder="809,1"></div>
+      <div class="f"><label for="i-high">30-Kerzen-Hoch<span class="hint">ohne die aktuelle Kerze</span></label>
+        <input id="i-high" type="number" inputmode="decimal" step="any" placeholder="81461,0"></div>
+    </div>
+
+    <h2 class="mt">Dein Konto</h2>
+    <div class="grid">
+      <div class="f"><label for="i-cash">Kontostand</label>
+        <input id="i-cash" type="number" inputmode="decimal" step="any" value="1000"></div>
+      <div class="f"><label for="i-risk">Risiko je Trade %</label>
+        <input id="i-risk" type="number" inputmode="decimal" step="0.25" value="2"></div>
+      <div class="f"><label for="i-fill">Einstiegskurs<span class="hint">optional, falls schon ausgeführt</span></label>
+        <input id="i-fill" type="number" inputmode="decimal" step="any" placeholder="sonst Schlusskurs"></div>
+    </div>
+    <div class="bar"><button class="ghost" id="i-clear">Kurswerte leeren</button></div>
+  </div>
+
+  <div class="verdict idle" id="i-verdict"><div class="head">Warten auf Eingaben</div>
+    <p>Trag die fünf Werte oben ein. Das Ergebnis erscheint sofort.</p></div>
+
+  <ul class="conds" id="i-conds"></ul>
+  <div id="i-planwrap" hidden>
+    <h2 class="mt">Handelsplan</h2>
+    <div class="plan" id="i-plan"></div>
+  </div>
+  <div class="flag" id="i-flag" hidden><p></p></div>
+  <p class="note" id="i-note"></p>
+</section>
+
+<!-- ============ POSITION ============ -->
+<section id="panel-mg" role="tabpanel" aria-labelledby="tab-mg" hidden>
+  <div class="card">
+    <h2>Deine Position</h2>
+    <div class="grid">
+      <div class="f"><label for="m-entry">Einstiegskurs</label>
+        <input id="m-entry" type="number" inputmode="decimal" step="any" placeholder="81600"></div>
+      <div class="f"><label for="m-stop">Aktueller Stop</label>
+        <input id="m-stop" type="number" inputmode="decimal" step="any" placeholder="80386,35"></div>
+      <div class="f"><label for="m-qty">Stückzahl<span class="hint">optional, für den Euro-Stand</span></label>
+        <input id="m-qty" type="number" inputmode="decimal" step="any" placeholder="0,012255"></div>
+    </div>
+    <h2 class="mt">Aktuelle Kerze</h2>
+    <div class="grid">
+      <div class="f"><label for="m-close">Schlusskurs</label>
+        <input id="m-close" type="number" inputmode="decimal" step="any"></div>
+      <div class="f"><label for="m-hh">Höchstes Hoch seit Einstieg</label>
+        <input id="m-hh" type="number" inputmode="decimal" step="any"></div>
+      <div class="f"><label for="m-atr">ATR (14) jetzt</label>
+        <input id="m-atr" type="number" inputmode="decimal" step="any"></div>
+      <div class="f"><label for="m-e50">EMA 50 jetzt</label>
+        <input id="m-e50" type="number" inputmode="decimal" step="any"></div>
+      <div class="f"><label for="m-low">15-Kerzen-Tief<span class="hint">optional</span></label>
+        <input id="m-low" type="number" inputmode="decimal" step="any"></div>
+    </div>
+    <div class="bar"><button class="ghost" id="m-clear">Position zurücksetzen</button></div>
+  </div>
+
+  <div class="verdict idle" id="m-verdict"><div class="head">Warten auf Eingaben</div>
+    <p>Trag deine Position und die Werte der aktuellen Kerze ein.</p></div>
+
+  <ul class="conds" id="m-conds"></ul>
+  <div id="m-planwrap" hidden>
+    <h2 class="mt">Stand</h2>
+    <div class="plan" id="m-plan"></div>
+  </div>
+  <p class="note" id="m-note"></p>
+</section>
+
+<details>
+  <summary>Die Regeln, auf denen das hier beruht</summary>
+  <ul class="rules">
+    <li><span class="id">R1</span><span>Trendfilter: EMA 50 &gt; EMA 200 <em>und</em> Schlusskurs über EMA 200.</span></li>
+    <li><span class="id">R2</span><span>Einstieg: Schlusskurs über dem höchsten Hoch der letzten 30 Kerzen. Gekauft wird zur <strong>Eröffnung der nächsten Kerze</strong>.</span></li>
+    <li><span class="id">R3</span><span>Stop: Einstieg − 1,5 × ATR(14), sofort als echte Order, nie nach unten verschieben.</span></li>
+    <li><span class="id">R4</span><span>Nachziehen: höchstes Hoch seit Einstieg − 6 × ATR(14), nur wenn höher als der bisherige Stop. ATR jede Kerze neu ablesen.</span></li>
+    <li><span class="id">R5</span><span>Ausstieg: Stop, oder Schluss unter EMA 50, oder Schluss unter dem 15-Kerzen-Tief.</span></li>
+    <li><span class="id">R6</span><span>Größe: höchstens 2 % Kontorisiko, kein Hebel, immer nur eine Position.</span></li>
+  </ul>
+</details>
+
+<footer>
+  Keine Anlageberatung. Das Werkzeug rechnet die Regeln aus, es trifft keine Entscheidung für dich — und die Regeln stammen aus einem Backtest der Vergangenheit, nicht aus einer Prognose. Alle Werte in der Währung deines Charts; nicht mischen.
+</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LS='btc-tradecheck-v1';
+const num=el=>{const v=parseFloat(String(el.value).replace(',','.'));return isFinite(v)?v:null;};
+const de=(n,d)=>n.toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});
+const dec=v=>v==null?2:(Math.abs(v)>=1000?2:(Math.abs(v)>=10?3:6));
+const K=(k,v,c)=>`<div><div class="k">${k}</div><div class="v">${v}</div><div class="c">${c||''}</div></div>`;
+const row=(ok,t,v)=>`<li><span class="mark ${ok?'y':'n'}">${ok?'erfüllt':'nein'}</span><span>${t}</span><span class="val">${v}</span></li>`;
+
+/* ---------- Tabs ---------- */
+const tabs=[['tab-in','panel-in'],['tab-mg','panel-mg']];
+tabs.forEach(([t,p])=>$(t).addEventListener('click',()=>{
+  tabs.forEach(([t2,p2])=>{const on=t2===t;$(t2).setAttribute('aria-selected',on);$(p2).hidden=!on;});
+  save();
+}));
+
+/* ---------- Speichern (nur Konto & Position, nicht die Kurswerte) ---------- */
+const KEEP=['i-cash','i-risk','m-entry','m-stop','m-qty'];
+function save(){try{
+  const o={tab:$('tab-mg').getAttribute('aria-selected')==='true'?'mg':'in'};
+  KEEP.forEach(id=>o[id]=$(id).value);
+  localStorage.setItem(LS,JSON.stringify(o));
+}catch(e){}}
+function load(){try{
+  const o=JSON.parse(localStorage.getItem(LS)||'{}');
+  KEEP.forEach(id=>{if(o[id]!=null&&o[id]!=='')$(id).value=o[id];});
+  if(o.tab==='mg')$('tab-mg').click();
+}catch(e){}}
+
+/* ================= Einstieg prüfen ================= */
+function checkEntry(){
+  const close=num($('i-close')), e50=num($('i-e50')), e200=num($('i-e200')),
+        atr=num($('i-atr')), high=num($('i-high')),
+        cash=num($('i-cash')), risk=num($('i-risk')), fill=num($('i-fill'));
+  const v=$('i-verdict'), conds=$('i-conds'), flag=$('i-flag'), note=$('i-note');
+  $('i-atr').classList.toggle('bad', atr!=null&&atr<=0);
+  const missing=[[close,'Schlusskurs'],[e50,'EMA 50'],[e200,'EMA 200'],[atr,'ATR(14)'],[high,'30-Kerzen-Hoch']]
+    .filter(x=>x[0]==null).map(x=>x[1]);
+  if(missing.length||atr<=0){
+    v.className='verdict idle';
+    v.innerHTML='<div class="head">Warten auf Eingaben</div><p>'+
+      (atr!=null&&atr<=0?'Der ATR muss größer als null sein.':'Es fehlt noch: '+missing.join(', ')+'.')+'</p>';
+    conds.innerHTML=''; $('i-planwrap').hidden=true; flag.hidden=true; note.textContent=''; return;
+  }
+  const c1=e50>e200, c2=close>e200, c3=close>high;
+  const go=c1&&c2&&c3;
+  const d=dec(close);
+  conds.innerHTML=
+    row(c1,'EMA 50 über EMA 200', de(e50,d)+' / '+de(e200,d))+
+    row(c2,'Kurs über EMA 200',   de(close,d)+' / '+de(e200,d))+
+    row(c3,'Kurs über dem 30-Kerzen-Hoch', de(close,d)+' / '+de(high,d));
+
+  const stopDist=1.5*atr, trailDist=6*atr;
+  const entry=(fill!=null&&fill>0)?fill:close;
+  const stop=entry-stopDist;
+
+  if(go){
+    v.className='verdict go';
+    v.innerHTML='<div class="head"><span class="badge">Signal</span>Einstieg erlaubt</div>'+
+      '<p>Alle drei Bedingungen sind erfüllt. Gekauft wird zur <strong>Eröffnung der nächsten Kerze</strong> — die Stop-Order geht gleichzeitig mit der Kauforder raus.</p>';
+  }else{
+    v.className='verdict wait';
+    const fehlt=[!c1&&'der Trendfilter (EMA 50 unter EMA 200)',
+                 !c2&&'der Kurs liegt unter dem EMA 200',
+                 !c3&&'der Ausbruch über das 30-Kerzen-Hoch'].filter(Boolean);
+    let extra='';
+    if(c1&&c2&&!c3){
+      const gap=high-close;
+      extra=' Es fehlen <strong>'+de(gap,d)+'</strong> nach oben — das sind '+
+            de(100*gap/close,2)+' % oder '+de(gap/atr,2)+' ATR.';
+    }
+    v.innerHTML='<div class="head"><span class="badge">Kein Signal</span>Nicht handeln</div>'+
+      '<p>Es fehlt: '+fehlt.join(' und ')+'.'+extra+
+      ' Nichts tun ist hier der Normalfall — die Strategie ist rund 79 % der Zeit außerhalb des Marktes.</p>';
+  }
+
+  if(stop<=0){
+    $('i-planwrap').hidden=true; flag.hidden=false;
+    flag.querySelector('p').innerHTML='<strong>Werte prüfen.</strong> Der ATR ist so groß, dass der Stop bei null oder darunter läge. Stimmen Kurs und ATR aus derselben Kerze und derselben Währung?';
+    note.textContent=''; return;
+  }
+
+  let qty=null,notional=null,loss=null,capped=false,effRisk=null;
+  if(cash!=null&&cash>0&&risk!=null&&risk>0){
+    qty=(cash*risk/100)/stopDist;
+    notional=qty*entry;
+    if(notional>cash){ qty=cash/entry; notional=cash; capped=true; }
+    loss=qty*stopDist; effRisk=100*loss/cash;
+  }
+  $('i-planwrap').hidden=false;
+  $('i-plan').innerHTML=
+    K('Stop-Kurs', de(stop,d), '1,5 × ATR = '+de(stopDist,d)+' darunter')+
+    K('Stückzahl', qty==null?'—':de(qty,6), 'BTC')+
+    K('Positionswert', notional==null?'—':de(notional,2), notional==null?'':de(100*notional/cash,1)+' % des Kontos')+
+    K('Verlust bei Stop', loss==null?'—':de(loss,2), effRisk==null?'= 1 R':'= 1 R · '+de(effRisk,2)+' % des Kontos')+
+    K('Trailing-Abstand', de(trailDist,d), '6 × ATR, ab dem nächsten Schluss');
+
+  if(capped){
+    flag.hidden=false;
+    flag.querySelector('p').innerHTML='<strong>Auf den Kontostand gedeckelt.</strong> Der Stop sitzt nur '+
+      de(100*stopDist/entry,2)+' % unter dem Einstieg — für die vollen '+de(risk,2)+
+      ' % Risiko wäre mehr Kapital nötig, als du hast. Ohne Hebel ist bei 100 % Schluss, dein tatsächliches Risiko liegt damit bei '+
+      de(effRisk,2)+' %. Das ist die Sicherung aus Regel 6, kein Fehler.';
+  } else flag.hidden=true;
+
+  note.innerHTML=(fill!=null&&fill>0)
+    ? 'Gerechnet mit deinem tatsächlichen Einstiegskurs '+de(entry,d)+'.'
+    : 'Gerechnet mit dem Schlusskurs als Schätzung für den Einstieg. Nach der Ausführung den echten Preis oben eintragen und Stop und Stückzahl nachrechnen.';
+  save();
+}
+
+/* ================= Position verwalten ================= */
+function checkManage(){
+  const entry=num($('m-entry')), oldStop=num($('m-stop')), qty=num($('m-qty')),
+        close=num($('m-close')), hh=num($('m-hh')), atr=num($('m-atr')),
+        e50=num($('m-e50')), low=num($('m-low'));
+  const v=$('m-verdict'), conds=$('m-conds'), note=$('m-note');
+  const missing=[[entry,'Einstiegskurs'],[oldStop,'aktueller Stop'],[close,'Schlusskurs'],
+                 [hh,'höchstes Hoch'],[atr,'ATR(14)'],[e50,'EMA 50']].filter(x=>x[0]==null).map(x=>x[1]);
+  if(missing.length||atr<=0){
+    v.className='verdict idle';
+    v.innerHTML='<div class="head">Warten auf Eingaben</div><p>Es fehlt noch: '+
+      (atr!=null&&atr<=0?'ein ATR größer als null':missing.join(', '))+'.</p>';
+    conds.innerHTML=''; $('m-planwrap').hidden=true; note.textContent=''; return;
+  }
+  const d=dec(close);
+  const trail=hh-6*atr;
+  const newStop=Math.max(oldStop,trail);
+  const stopHit=close<=oldStop;
+  const emaBreak=close<e50;
+  const lowBreak=(low!=null)&&close<low;
+  const out=stopHit||emaBreak||lowBreak;
+
+  conds.innerHTML=
+    row(!stopHit,'Kurs über dem Stop', de(close,d)+' / '+de(oldStop,d))+
+    row(!emaBreak,'Kurs über EMA 50',  de(close,d)+' / '+de(e50,d))+
+    (low!=null?row(!lowBreak,'Kurs über dem 15-Kerzen-Tief', de(close,d)+' / '+de(low,d)):'');
+
+  if(out){
+    const gruende=[stopHit&&'der Stop wurde erreicht',emaBreak&&'der Schluss liegt unter dem EMA 50',
+                   lowBreak&&'der Schluss liegt unter dem 15-Kerzen-Tief'].filter(Boolean);
+    v.className='verdict out';
+    v.innerHTML='<div class="head"><span class="badge">Ausstieg</span>Position schließen</div>'+
+      '<p>Regel 5 greift: '+gruende.join(' und ')+
+      '. Verkauft wird zur Eröffnung der nächsten Kerze. Danach den Trade im Journal abschließen.</p>';
+  }else{
+    v.className='verdict go';
+    const moved=newStop>oldStop;
+    v.innerHTML='<div class="head"><span class="badge">Halten</span>Position bleibt offen</div>'+
+      '<p>'+(moved
+        ? 'Zieh den Stop auf <strong>'+de(newStop,d)+'</strong> nach — das sind '+de(newStop-oldStop,d)+' höher als bisher. Die bestehende Stop-Order anpassen, nicht zusätzlich eine neue setzen.'
+        : 'Der Stop bleibt bei <strong>'+de(oldStop,d)+'</strong>. Der nachgezogene Wert läge bei '+de(trail,d)+' und damit tiefer — der Stop wandert nie nach unten.')+'</p>';
+  }
+
+  const dist=close-newStop;
+  const risk1R=entry-oldStop;
+  const standR=risk1R>0?(close-entry)/risk1R:null;
+  $('m-planwrap').hidden=false;
+  $('m-plan').innerHTML=
+    K('Neuer Stop', de(newStop,d), newStop>oldStop?'nachgezogen':'unverändert')+
+    K('Trailing-Wert', de(trail,d), 'Hoch − 6 × ATR')+
+    K('Abstand zum Stop', de(dist,d), atr>0?de(dist/atr,2)+' ATR':'')+
+    K('Stand in R', standR==null?'—':(standR>0?'+':'')+de(standR,2), 'gemessen am Erst-Risiko')+
+    (qty!=null&&qty>0?K('Stand in Euro',(close>entry?'+':'')+de(qty*(close-entry),2),'unrealisiert'):'');
+
+  note.textContent='Der ATR ändert sich mit jeder Kerze — trag ihn bei jeder Prüfung neu ein, statt den alten Trailing-Abstand weiterzuverwenden.';
+  save();
+}
+
+/* ---------- Verdrahtung ---------- */
+['i-close','i-e50','i-e200','i-atr','i-high','i-cash','i-risk','i-fill']
+  .forEach(id=>$(id).addEventListener('input',checkEntry));
+['m-entry','m-stop','m-qty','m-close','m-hh','m-atr','m-e50','m-low']
+  .forEach(id=>$(id).addEventListener('input',checkManage));
+$('i-clear').addEventListener('click',()=>{
+  ['i-close','i-e50','i-e200','i-atr','i-high','i-fill'].forEach(id=>$(id).value='');
+  checkEntry(); $('i-close').focus();
+});
+$('m-clear').addEventListener('click',()=>{
+  ['m-entry','m-stop','m-qty','m-close','m-hh','m-atr','m-e50','m-low'].forEach(id=>$(id).value='');
+  checkManage(); $('m-entry').focus();
+});
+load(); checkEntry(); checkManage();
+</script>
+</body>
+</html>
